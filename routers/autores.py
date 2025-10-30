@@ -81,16 +81,23 @@ def actualizar_autor(autor_id: int, datos_actualizados: schemas.AutorCreate, db:
 
 
 # ==============================
-# 🔴 Eliminar autor
+# 🔴 Eliminar autor (con lógica de negocio)
 # ==============================
-@router.delete("/{autor_id}", status_code=204)
+@router.delete("/{autor_id}", status_code=400)
 def eliminar_autor(autor_id: int, db: Session = Depends(get_db)):
     """
-    Elimina un autor si existe.
+    Elimina un autor si no tiene libros asociados.
     """
     autor = db.query(models.Autor).filter(models.Autor.id == autor_id).first()
     if not autor:
         raise HTTPException(status_code=404, detail="Autor no encontrado.")
+
+    libros_asociados = db.query(models.Libro).filter(models.Libro.autor_id == autor_id).count()
+    if libros_asociados > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede eliminar el autor '{autor.nombre}' porque tiene {libros_asociados} libro(s) asociado(s)."
+        )
 
     db.delete(autor)
     db.commit()
