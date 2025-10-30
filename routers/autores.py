@@ -1,59 +1,97 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-import crud, schemas
 from database import get_db
+import models, schemas
 
 router = APIRouter(prefix="/autores", tags=["Autores"])
 
-# Crear un autor
-@router.post("/", response_model=schemas.Autor)
+
+# ==============================
+# 🟢 Crear un autor
+# ==============================
+@router.post("/", response_model=schemas.AutorResponse, status_code=201)
 def crear_autor(autor: schemas.AutorCreate, db: Session = Depends(get_db)):
-    return crud.crear_autor(db, autor)
+    """
+    Crea un nuevo autor si no existe otro con el mismo nombre.
+    """
+    autor_existente = db.query(models.Autor).filter(models.Autor.nombre == autor.nombre).first()
+    if autor_existente:
+        raise HTTPException(status_code=409, detail="Ya existe un autor con ese nombre.")
+
+    nuevo_autor = models.Autor(**autor.dict())
+    db.add(nuevo_autor)
+    db.commit()
+    db.refresh(nuevo_autor)
+    return nuevo_autor
 
 
-# 📍 Listar autores con filtros opcionales
-@router.get("/", response_model=list[schemas.Autor])
+# ==============================
+# 🟢 Listar autores (con filtro por país)
+# ==============================
+@router.get("/", response_model=list[schemas.AutorResponse])
 def listar_autores(
-    nombre: str | None = Query(None, description="Filtrar por nombre del autor"),
-    pais_origen: str | None = Query(None, description="Filtrar por país de origen"),
-    anio_nacimiento: int | None = Query(None, description="Filtrar por año de nacimiento"),
-    db: Session = Depends(get_db)
+        pais: str = Query(None, description="Filtrar autores por país"),
+        db: Session = Depends(get_db)
 ):
-    autores = crud.listar_autores(db)
+    """
+    Lista todos los autores o filtra por país si se pasa como parámetro.
+    """
+    if pais:
+        autores = db.query(models.Autor).filter(models.Autor.pais == pais).all()
+    else:
+        autores = db.query(models.Autor).all()
 
-    # Aplicamos filtros si el usuario los envía
-    if nombre:
-        autores = [a for a in autores if nombre.lower() in a.nombre.lower()]
-    if pais_origen:
-        autores = [a for a in autores if pais_origen.lower() in a.pais_origen.lower()]
-    if anio_nacimiento:
-        autores = [a for a in autores if a.anio_nacimiento == anio_nacimiento]
-
+    if not autores:
+        raise HTTPException(status_code=404, detail="No se encontraron autores.")
     return autores
 
 
-# Obtener autor por ID
-@router.get("/{autor_id}", response_model=schemas.Autor)
+# ==============================
+# 🟢 Obtener autor por ID
+# ==============================
+@router.get("/{autor_id}", response_model=schemas.AutorResponse)
 def obtener_autor(autor_id: int, db: Session = Depends(get_db)):
-    autor = crud.obtener_autor(db, autor_id)
+    """
+    Obtiene un autor por su ID.
+    """
+    autor = db.query(models.Autor).filter(models.Autor.id == autor_id).first()
     if not autor:
-        raise HTTPException(status_code=404, detail="Autor no encontrado")
+        raise HTTPException(status_code=404, detail="Autor no encontrado.")
     return autor
 
 
-# Actualizar autor
-@router.put("/{autor_id}", response_model=schemas.Autor)
-def actualizar_autor(autor_id: int, autor: schemas.AutorCreate, db: Session = Depends(get_db)):
-    autor_actualizado = crud.actualizar_autor(db, autor_id, autor)
-    if not autor_actualizado:
-        raise HTTPException(status_code=404, detail="Autor no encontrado")
-    return autor_actualizado
-
-
-# Eliminar autor
-@router.delete("/{autor_id}")
-def eliminar_autor(autor_id: int, db: Session = Depends(get_db)):
-    autor = crud.eliminar_autor(db, autor_id)
+# ==============================
+# 🟡 Actualizar autor
+# ==============================
+@router.put("/{autor_id}", response_model=schemas.AutorResponse)
+def actualizar_autor(autor_id: int, datos_actualizados: schemas.AutorCreate, db: Session = Depends(get_db)):
+    """
+    Actualiza los datos de un autor existente.
+    """
+    autor = db.query(models.Autor).filter(models.Autor.id == autor_id).first()
     if not autor:
-        raise HTTPException(status_code=404, detail="Autor no encontrado")
-    return {"ok": True, "mensaje": "Autor eliminado correctamente"}
+        raise HTTPException(status_code=404, detail="Autor no encontrado.")
+
+    for clave, valor in datos_actualizados.dict().items():
+        setattr(autor, clave, valor)
+
+    db.commit()
+    db.refresh(autor)
+    return autor
+
+
+# ==============================
+# 🔴 Eliminar autor
+# ==============================
+@router.delete("/{autor_id}", status_code=204)
+def eliminar_autor(autor_id: int, db: Session = Depends(get_db)):
+    """
+    Elimina un autor si existe.
+    """
+    autor = db.query(models.Autor).filter(models.Autor.id == autor_id).first()
+    if not autor:
+        raise HTTPException(status_code=404, detail="Autor no encontrado.")
+
+    db.delete(autor)
+    db.commit()
+    return {"mensaje": "Autor eliminado correctamente."}
