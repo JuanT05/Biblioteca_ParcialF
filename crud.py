@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
-from models import Autor
-from typing import List
+from models import Autor, Libro, AutorLibro
+from typing import List, Optional
 
 # Crear autor
 def crear_autor(session: Session, autor: Autor) -> Autor:
@@ -17,6 +17,42 @@ def listar_autores(session: Session, pais: str = None) -> List[Autor]:
     autores = session.exec(query).all()
     return autores
 
+def obtener_autor(session: Session, autor_id: int) -> Optional[Autor]:
+    return session.get(Autor, autor_id)
+
+
+def actualizar_autor(session: Session, autor_id: int, datos: dict) -> Optional[Autor]:
+    autor = session.get(Autor, autor_id)
+    if not autor:
+        return None
+
+    for clave, valor in datos.items():
+        setattr(autor, clave, valor)
+
+    session.add(autor)
+    session.commit()
+    session.refresh(autor)
+    return autor
+
+
+def eliminar_autor(session: Session, autor_id: int) -> bool:
+    autor = session.get(Autor, autor_id)
+    if not autor:
+        return False
+
+    # Eliminar las relaciones en la tabla intermedia (AutorLibro)
+    session.exec(
+        select(AutorLibro).where(AutorLibro.autor_id == autor.id)
+    )
+    relaciones = session.exec(
+        select(AutorLibro).where(AutorLibro.autor_id == autor.id)
+    ).all()
+    for r in relaciones:
+        session.delete(r)
+
+    session.delete(autor)
+    session.commit()
+    return True
 
 from models import Libro, Autor, AutorLibro
 from sqlmodel import select

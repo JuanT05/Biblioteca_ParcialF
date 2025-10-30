@@ -17,6 +17,35 @@ def on_startup():
 def read_root():
     return {"mensaje": "Bienvenido al Sistema de Gestión de Biblioteca 📚"}
 
+from crud import obtener_autor, actualizar_autor, eliminar_autor
+
+# Obtener autor y sus libros
+@app.get("/autores/{autor_id}", response_model=AutorRead)
+def obtener_autor_endpoint(autor_id: int, session: Session = Depends(get_session)):
+    autor = obtener_autor(session, autor_id)
+    if not autor:
+        raise HTTPException(status_code=404, detail="Autor no encontrado")
+    return autor
+
+
+# Actualizar autor
+@app.put("/autores/{autor_id}", response_model=AutorRead)
+def actualizar_autor_endpoint(autor_id: int, datos: dict, session: Session = Depends(get_session)):
+    autor = actualizar_autor(session, autor_id, datos)
+    if not autor:
+        raise HTTPException(status_code=404, detail="Autor no encontrado")
+    return autor
+
+
+# Eliminar autor
+@app.delete("/autores/{autor_id}")
+def eliminar_autor_endpoint(autor_id: int, session: Session = Depends(get_session)):
+    ok = eliminar_autor(session, autor_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Autor no encontrado")
+    return {"mensaje": "Autor eliminado correctamente"}
+
+
 
 # -------------------------
 # ENDPOINTS DE AUTORES
