@@ -32,3 +32,57 @@ def crear_autor_endpoint(autor: AutorCreate, session: Session = Depends(get_sess
 def listar_autores_endpoint(pais: str | None = None, session: Session = Depends(get_session)):
     autores = listar_autores(session, pais)
     return autores
+
+from models import Libro
+from schemas import LibroCreate, LibroRead
+from crud import crear_libro, listar_libros, obtener_libro, actualizar_libro, eliminar_libro
+
+# -------------------------
+# ENDPOINTS DE LIBROS
+# -------------------------
+
+@app.post("/libros/", response_model=LibroRead)
+def crear_libro_endpoint(libro_data: LibroCreate, session: Session = Depends(get_session)):
+    nuevo_libro = Libro(
+        titulo=libro_data.titulo,
+        isbn=libro_data.isbn,
+        anio_publicacion=libro_data.anio_publicacion,
+        copias_disponibles=libro_data.copias_disponibles
+    )
+    try:
+        libro_creado = crear_libro(session, nuevo_libro, libro_data.autores_ids)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return libro_creado
+
+
+@app.get("/libros/", response_model=List[LibroRead])
+def listar_libros_endpoint(anio: int | None = None, session: Session = Depends(get_session)):
+    return listar_libros(session, anio)
+
+
+@app.get("/libros/{libro_id}", response_model=LibroRead)
+def obtener_libro_endpoint(libro_id: int, session: Session = Depends(get_session)):
+    libro = obtener_libro(session, libro_id)
+    if not libro:
+        raise HTTPException(status_code=404, detail="Libro no encontrado")
+    return libro
+
+
+@app.put("/libros/{libro_id}", response_model=LibroRead)
+def actualizar_libro_endpoint(libro_id: int, datos: dict, session: Session = Depends(get_session)):
+    try:
+        libro = actualizar_libro(session, libro_id, datos)
+        if not libro:
+            raise HTTPException(status_code=404, detail="Libro no encontrado")
+        return libro
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/libros/{libro_id}")
+def eliminar_libro_endpoint(libro_id: int, session: Session = Depends(get_session)):
+    ok = eliminar_libro(session, libro_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Libro no encontrado")
+    return {"mensaje": "Libro eliminado correctamente"}
