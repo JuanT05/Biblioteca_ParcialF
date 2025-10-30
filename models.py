@@ -1,34 +1,19 @@
-from typing import Optional, List
-from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, Integer, String
+from database import Base
 
-# ------------------------
-# Tabla intermedia N:N
-# ------------------------
-class AutorLibro(SQLModel, table=True):
-    autor_id: Optional[int] = Field(default=None, foreign_key="autor.id", primary_key=True)
-    libro_id: Optional[int] = Field(default=None, foreign_key="libro.id", primary_key=True)
+class Autor(Base):
+    __tablename__ = "autores"
 
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, index=True)
+    pais_origen = Column(String)
+    anio_nacimiento = Column(Integer)
 
-# ------------------------
-# Tabla Autor
-# ------------------------
-class Autor(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    nombre: str
-    pais_origen: str
-    anio_nacimiento: int
+class Libro(Base):
+    __tablename__ = "libros"
 
-    libros: List["Libro"] = Relationship(back_populates="autores", link_model=AutorLibro)
-
-
-# ------------------------
-# Tabla Libro
-# ------------------------
-class Libro(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    titulo: str
-    isbn: str = Field(unique=True, index=True)
-    anio_publicacion: int
-    copias_disponibles: int
-
-    autores: List[Autor] = Relationship(back_populates="libros", link_model=AutorLibro)
+    id = Column(Integer, primary_key=True, index=True)
+    titulo = Column(String, index=True)
+    isbn = Column(String, unique=True, index=True)
+    anio_publicacion = Column(Integer)
+    copias_disponibles = Column(Integer)

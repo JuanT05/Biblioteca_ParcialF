@@ -1,40 +1,29 @@
-from typing import List, Optional
-from sqlmodel import SQLModel
+from typing import Optional
+from pydantic import BaseModel
 
-# -------------------------
-# Schemas para Autor
-# -------------------------
-class AutorBase(SQLModel):
+class AutorBase(BaseModel):
     nombre: str
     pais_origen: str
     anio_nacimiento: int
 
-
 class AutorCreate(AutorBase):
     pass
 
-
-class AutorRead(AutorBase):
+class Autor(AutorBase):
     id: int
     class Config:
         orm_mode = True
 
-
-# -------------------------
-# Schemas para Libro
-# -------------------------
-class LibroBase(SQLModel):
+class LibroBase(BaseModel):
     titulo: str
     isbn: str
     anio_publicacion: int
     copias_disponibles: int
 
-
 class LibroCreate(LibroBase):
-    autores_ids: Optional[List[int]] = []  # lista de IDs de autores
+    pass
 
-
-class LibroRead(LibroBase):
+class Libro(LibroBase):
     id: int
     class Config:
         orm_mode = True
